@@ -1,0 +1,27 @@
+### Registrar nuevo usuario
+POST http://localhost:8080/api/auth/register
+Content-Type: application/json
+
+{
+  "nombre": "Test",
+  "apellido": "Usuario",
+  "email": "test@ejemplo.com",
+  "password": "123456",
+  "rol": "ESTUDIANTE"
+}
+
+### Login
+POST http://localhost:8080/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "test@ejemplo.com",
+  "password": "123456"
+}
+
+### Obtener perfil (reemplaza TOKEN con el token que te devuelve el login)
+GET http://localhost:8080/api/auth/me
+Authorization: Bearer TOKEN_AQUI
+
+### Listar materias (público)
+GET http://localhost:8080/api/materias
