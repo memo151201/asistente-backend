@@ -41,4 +41,10 @@ public class Subtema {
     @JsonManagedReference
     @OneToMany(mappedBy = "subtema", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Pregunta> preguntas;
+    // Relación con Contenido (AGREGAR ESTO)
+    @JsonManagedReference
+    @OneToMany(mappedBy = "subtema", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Contenido> contenidos;
+
+
 }
