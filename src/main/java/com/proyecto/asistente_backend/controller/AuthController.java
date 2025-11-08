@@ -1,7 +1,5 @@
 package com.proyecto.asistente_backend.controller;
 
-
-
 import com.proyecto.asistente_backend.dto.AuthResponse;
 import com.proyecto.asistente_backend.dto.LoginRequest;
 import com.proyecto.asistente_backend.dto.RegisterRequest;
@@ -16,6 +14,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
@@ -77,7 +76,7 @@ public class AuthController {
                     .nombre(usuario.getNombre())
                     .apellido(usuario.getApellido())
                     .email(usuario.getEmail())
-                    .rol(usuario.getRol().name()) // ⭐ Convertir enum a String
+                    .rol(usuario.getRol().name())
                     .build();
 
             return ResponseEntity.ok(response);
@@ -127,15 +126,16 @@ public class AuthController {
                     .apellido(registerRequest.getApellido())
                     .email(registerRequest.getEmail())
                     .password(passwordEncoder.encode(registerRequest.getPassword()))
-                    .rol(rol) // ⭐ Usar el enum
+                    .rol(rol)
                     .activo(true)
                     .fechaRegistro(LocalDateTime.now())
                     .build();
 
             usuarioRepository.save(usuario);
 
-            // Generar token JWT para el nuevo usuario
-            String jwt = tokenProvider.generateTokenFromEmail(usuario.getEmail());
+            // ⭐ CAMBIO IMPORTANTE: Cargar UserDetails y generar token con authorities
+            UserDetails userDetails = customUserDetailsService.loadUserByUsername(usuario.getEmail());
+            String jwt = tokenProvider.generateTokenFromUserDetails(userDetails);
 
             // Crear respuesta
             AuthResponse response = AuthResponse.builder()
@@ -145,7 +145,7 @@ public class AuthController {
                     .nombre(usuario.getNombre())
                     .apellido(usuario.getApellido())
                     .email(usuario.getEmail())
-                    .rol(usuario.getRol().name()) // ⭐ Convertir enum a String
+                    .rol(usuario.getRol().name())
                     .build();
 
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
@@ -175,7 +175,7 @@ public class AuthController {
             response.put("nombre", usuario.getNombre());
             response.put("apellido", usuario.getApellido());
             response.put("email", usuario.getEmail());
-            response.put("rol", usuario.getRol().name()); // ⭐ Convertir enum a String
+            response.put("rol", usuario.getRol().name());
             response.put("activo", usuario.getActivo());
             response.put("fechaRegistro", usuario.getFechaRegistro());
 
