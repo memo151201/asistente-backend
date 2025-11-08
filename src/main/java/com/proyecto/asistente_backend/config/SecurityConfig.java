@@ -21,7 +21,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-
+import org.springframework.http.HttpMethod;
 import java.util.Arrays;
 
 /**
@@ -51,12 +51,35 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // Endpoints públicos (sin autenticación)
                         .requestMatchers("/api/auth/register", "/api/auth/login").permitAll()
-                        .requestMatchers("/api/materias/**").permitAll()
-                        .requestMatchers("/api/temas/**").permitAll()
-                        .requestMatchers("/api/subtemas/**").permitAll()
-                        .requestMatchers("/api/preguntas/**").permitAll()
 
-                        // Endpoints protegidos (requieren autenticación)
+                        // LECTURA pública (GET) - cualquiera puede ver
+                        .requestMatchers(HttpMethod.GET, "/api/materias/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/temas/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/subtemas/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/contenidos/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/preguntas/**").permitAll()
+
+                        // CREACIÓN de contenido - SOLO profesores/admin (manual)
+                        .requestMatchers(HttpMethod.POST, "/api/materias/**").hasAnyRole("ADMINISTRADOR", "PROFESOR")
+                        .requestMatchers(HttpMethod.PUT, "/api/materias/**").hasAnyRole("ADMINISTRADOR", "PROFESOR")
+                        .requestMatchers(HttpMethod.DELETE, "/api/materias/**").hasAnyRole("ADMINISTRADOR", "PROFESOR")
+
+                        .requestMatchers(HttpMethod.POST, "/api/temas/**").hasAnyRole("ADMINISTRADOR", "PROFESOR")
+                        .requestMatchers(HttpMethod.PUT, "/api/temas/**").hasAnyRole("ADMINISTRADOR", "PROFESOR")
+                        .requestMatchers(HttpMethod.DELETE, "/api/temas/**").hasAnyRole("ADMINISTRADOR", "PROFESOR")
+
+                        .requestMatchers(HttpMethod.POST, "/api/subtemas/**").hasAnyRole("ADMINISTRADOR", "PROFESOR")
+                        .requestMatchers(HttpMethod.PUT, "/api/subtemas/**").hasAnyRole("ADMINISTRADOR", "PROFESOR")
+                        .requestMatchers(HttpMethod.DELETE, "/api/subtemas/**").hasAnyRole("ADMINISTRADOR", "PROFESOR")
+
+                        .requestMatchers(HttpMethod.POST, "/api/contenidos/**").hasAnyRole("ADMINISTRADOR", "PROFESOR")
+                        .requestMatchers(HttpMethod.PUT, "/api/contenidos/**").hasAnyRole("ADMINISTRADOR", "PROFESOR")
+                        .requestMatchers(HttpMethod.DELETE, "/api/contenidos/**").hasAnyRole("ADMINISTRADOR", "PROFESOR")
+
+                        // ⭐ IA para generar preguntas - CUALQUIER usuario autenticado
+                        .requestMatchers("/api/ia/**").authenticated()
+
+                        // Otros endpoints protegidos
                         .requestMatchers("/api/usuarios/**").hasAnyRole("ADMINISTRADOR", "PROFESOR")
                         .requestMatchers("/api/retroalimentaciones/**").authenticated()
 
@@ -64,12 +87,10 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 );
 
-        // Agregar filtro JWT antes del filtro de autenticación de usuario/contraseña
         http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
-
     /**
      * Proveedor de autenticación con CustomUserDetailsService
      */
