@@ -77,7 +77,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.DELETE, "/api/contenidos/**").hasAnyRole("ADMINISTRADOR", "PROFESOR")
 
                         // ⭐ IA para generar preguntas - CUALQUIER usuario autenticado
-                        .requestMatchers("/api/ia/**").authenticated()
+                        // ✅ AHORA (público temporalmente):
+                        .requestMatchers("/api/ia/**").permitAll()
 
                         // Otros endpoints protegidos
                         .requestMatchers("/api/usuarios/**").hasAnyRole("ADMINISTRADOR", "PROFESOR")
