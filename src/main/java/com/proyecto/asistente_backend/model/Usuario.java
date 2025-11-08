@@ -1,13 +1,22 @@
 package com.proyecto.asistente_backend.model;
 
 
+
+
+
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
+        import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
-import com.fasterxml.jackson.annotation.JsonManagedReference;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
+
 import java.time.LocalDateTime;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 
 @Entity
@@ -16,7 +25,7 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class Usuario {
+public class Usuario implements UserDetails {  // ⬅️ AGREGA implements UserDetails
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -44,7 +53,6 @@ public class Usuario {
     @Column(name = "activo")
     private Boolean activo = true;
 
-    // AGREGAR ESTA ANOTACIÓN ⬇️
     @JsonManagedReference
     @OneToMany(mappedBy = "usuario", cascade = CascadeType.ALL)
     private List<Retroalimentacion> retroalimentaciones;
@@ -58,5 +66,40 @@ public class Usuario {
         ESTUDIANTE,
         ADMINISTRADOR,
         PROFESOR
+    }
+
+    // ⬇️⬇️⬇️ AGREGA ESTOS MÉTODOS ⬇️⬇️⬇️
+
+    @Override
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        // ⭐ IMPORTANTE: Agrega el prefijo "ROLE_"
+        return Collections.singletonList(
+                new SimpleGrantedAuthority("ROLE_" + this.rol.name())
+        );
+    }
+
+    @Override
+    public String getUsername() {
+        return this.email;
+    }
+
+    @Override
+    public boolean isAccountNonExpired() {
+        return true;
+    }
+
+    @Override
+    public boolean isAccountNonLocked() {
+        return true;
+    }
+
+    @Override
+    public boolean isCredentialsNonExpired() {
+        return true;
+    }
+
+    @Override
+    public boolean isEnabled() {
+        return this.activo;
     }
 }
