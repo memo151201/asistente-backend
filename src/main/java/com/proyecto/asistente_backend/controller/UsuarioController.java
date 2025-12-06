@@ -66,7 +66,7 @@ public class UsuarioController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> desactivarUsuario(@PathVariable Long id) {
         try {
-            usuarioService.desactivarUsuario(id);
+            usuarioService.eliminarUsuario(id);
             return ResponseEntity.noContent().build();
         } catch (RuntimeException e) {
             return ResponseEntity.notFound().build();
