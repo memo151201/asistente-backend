@@ -8,15 +8,12 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
-import javax.crypto.SecretKey;
+import java.security.Key;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-/**
- * Proveedor de JWT - Genera y valida tokens
- */
 @Component
 public class JwtTokenProvider {
 
@@ -35,14 +32,13 @@ public class JwtTokenProvider {
     }
 
     /**
-     * Genera un token JWT para un UserDetails (usado en registro y login)
+     * Genera un token JWT para un UserDetails
      */
     public String generateTokenFromUserDetails(UserDetails userDetails) {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + jwtExpirationMs);
-        SecretKey key = Keys.hmacShaKeyFor(jwtSecret.getBytes());
+        Key key = Keys.hmacShaKeyFor(jwtSecret.getBytes());
 
-        // ⭐ AGREGAR AUTHORITIES AL TOKEN
         Map<String, Object> claims = new HashMap<>();
         claims.put("authorities", userDetails.getAuthorities()
                 .stream()
@@ -50,28 +46,28 @@ public class JwtTokenProvider {
                 .collect(Collectors.toList()));
 
         return Jwts.builder()
-                .claims(claims)
-                .subject(userDetails.getUsername())
-                .issuedAt(now)
-                .expiration(expiryDate)
-                .signWith(key)
+                .setClaims(claims)              // ← setClaims (versión 0.11.5)
+                .setSubject(userDetails.getUsername())
+                .setIssuedAt(now)
+                .setExpiration(expiryDate)
+                .signWith(key, SignatureAlgorithm.HS256)
                 .compact();
     }
 
     /**
-     * Genera un token JWT para un email específico (DEPRECADO - usar generateTokenFromUserDetails)
+     * Genera un token JWT para un email específico
      */
     @Deprecated
     public String generateTokenFromEmail(String email) {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + jwtExpirationMs);
-        SecretKey key = Keys.hmacShaKeyFor(jwtSecret.getBytes());
+        Key key = Keys.hmacShaKeyFor(jwtSecret.getBytes());
 
         return Jwts.builder()
-                .subject(email)
-                .issuedAt(now)
-                .expiration(expiryDate)
-                .signWith(key)
+                .setSubject(email)
+                .setIssuedAt(now)
+                .setExpiration(expiryDate)
+                .signWith(key, SignatureAlgorithm.HS256)
                 .compact();
     }
 
@@ -79,13 +75,13 @@ public class JwtTokenProvider {
      * Obtiene el email del usuario desde el token
      */
     public String getEmailFromToken(String token) {
-        SecretKey key = Keys.hmacShaKeyFor(jwtSecret.getBytes());
+        Key key = Keys.hmacShaKeyFor(jwtSecret.getBytes());
 
-        Claims claims = Jwts.parser()
-                .verifyWith(key)
+        Claims claims = Jwts.parserBuilder()     // ← parserBuilder (0.11.5)
+                .setSigningKey(key)
                 .build()
-                .parseSignedClaims(token)
-                .getPayload();
+                .parseClaimsJws(token)
+                .getBody();
 
         return claims.getSubject();
     }
@@ -95,11 +91,11 @@ public class JwtTokenProvider {
      */
     public boolean validateToken(String token) {
         try {
-            SecretKey key = Keys.hmacShaKeyFor(jwtSecret.getBytes());
-            Jwts.parser()
-                    .verifyWith(key)
+            Key key = Keys.hmacShaKeyFor(jwtSecret.getBytes());
+            Jwts.parserBuilder()                 // ← parserBuilder (0.11.5)
+                    .setSigningKey(key)
                     .build()
-                    .parseSignedClaims(token);
+                    .parseClaimsJws(token);
             return true;
         } catch (MalformedJwtException e) {
             System.err.println("Token JWT malformado: " + e.getMessage());

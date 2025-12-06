@@ -2,6 +2,13 @@ package com.proyecto.asistente_backend.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.proyecto.asistente_backend.model.*;
+import com.proyecto.asistente_backend.repository.EjercicioRepository;
+import com.proyecto.asistente_backend.repository.RespuestaEjercicioRepository;
+import com.proyecto.asistente_backend.repository.UsuarioRepository;
+import com.proyecto.asistente_backend.service.ContenidoService;
+import com.proyecto.asistente_backend.repository.EjercicioRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
@@ -17,6 +24,17 @@ public class IAService {
 
     @Value("${groq.api.url}")
     private String apiUrl;
+    @Autowired
+    private EjercicioRepository ejercicioRepository;
+
+    @Autowired
+    private RespuestaEjercicioRepository respuestaEjercicioRepository;
+
+    @Autowired
+    private UsuarioRepository usuarioRepository;
+
+    @Autowired
+    private ContenidoService contenidoService;
 
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
@@ -196,6 +214,91 @@ public class IAService {
         } catch (Exception e) {
             System.err.println("❌ Error al generar retroalimentación: " + e.getMessage());
             return explicacionOriginal;
+        }
+    }
+    public RespuestaEjercicio evaluarEjercicio(
+            Long ejercicioId,
+            String respuestaUsuario,
+            Long usuarioId
+    ) {
+
+        // 1. Buscar el ejercicio
+        Ejercicio ejercicio = ejercicioRepository.findById(ejercicioId)
+                .orElseThrow(() -> new RuntimeException("Ejercicio no encontrado"));
+
+        // 2. Obtener CONTENIDO del subtema (esto es clave)
+        String contenidoSubtema = contenidoService
+                .obtenerContenidoCompletoParaIA(ejercicio.getSubtema().getId());
+
+        // 3. Crear prompt para Grok
+        String prompt = String.format("""
+        Eres un profesor experto. Evalúa la respuesta de un estudiante.
+        
+        CONTEXTO DEL TEMA (contenido educativo):
+        %s
+        
+        EJERCICIO PLANTEADO:
+        %s
+        %s
+        
+        %s
+        
+        RESPUESTA DEL ESTUDIANTE:
+        %s
+        
+        Evalúa la respuesta considerando:
+        1. ¿Es correcta según el contenido del tema?
+        2. ¿Demuestra comprensión?
+        3. ¿Tiene errores conceptuales o de sintaxis?
+        
+        Responde SOLO con este JSON (sin markdown):
+        {
+          "estado": "CORRECTO o PARCIALMENTE_CORRECTO o INCORRECTO",
+          "puntaje": 85,
+          "retroalimentacion": "Evaluación detallada y constructiva"
+        }
+        """,
+                contenidoSubtema,
+                ejercicio.getEnunciado(),
+                ejercicio.getDescripcion() != null ? "Descripción: " + ejercicio.getDescripcion() : "",
+                ejercicio.getSolucionReferencia() != null ?
+                        "Solución de referencia: " + ejercicio.getSolucionReferencia() : "",
+                respuestaUsuario
+        );
+
+        // 4. Llamar a Grok
+        String respuestaGrok = llamarGroqIA(
+                "Eres un profesor experto evaluador",
+                prompt,
+                500
+        );
+
+        // 5. Parsear respuesta
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            String jsonLimpio = respuestaGrok
+                    .replace("```json", "")
+                    .replace("```", "")
+                    .trim();
+
+            JsonNode evaluacion = mapper.readTree(jsonLimpio);
+
+            // 6. Crear respuesta
+            RespuestaEjercicio respuesta = new RespuestaEjercicio();
+            respuesta.setEjercicio(ejercicio);
+            respuesta.setUsuario(usuarioRepository.findById(usuarioId)
+                    .orElseThrow(() -> new RuntimeException("Usuario no encontrado")));
+            respuesta.setRespuestaUsuario(respuestaUsuario);
+            respuesta.setRetroalimentacionIA(evaluacion.path("retroalimentacion").asText());
+            respuesta.setEstado(RespuestaEjercicio.EstadoEvaluacion.valueOf(
+                    evaluacion.path("estado").asText()
+            ));
+            respuesta.setPuntaje(evaluacion.path("puntaje").asInt());
+
+            return respuestaEjercicioRepository.save(respuesta);
+
+        } catch (Exception e) {
+            throw new RuntimeException("Error al parsear evaluación: " + e.getMessage());
         }
     }
 

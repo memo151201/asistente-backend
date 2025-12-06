@@ -1,7 +1,5 @@
 package com.proyecto.asistente_backend.config;
 
-
-import com.proyecto.asistente_backend.security.JwtAuthenticationFilter;
 import com.proyecto.asistente_backend.service.CustomUserDetailsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -17,16 +15,11 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-import org.springframework.http.HttpMethod;
 import java.util.Arrays;
 
-/**
- * Configuración de seguridad de Spring Security con JWT
- */
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
@@ -35,12 +28,8 @@ public class SecurityConfig {
     @Autowired
     private CustomUserDetailsService customUserDetailsService;
 
-    @Autowired
-    private JwtAuthenticationFilter jwtAuthenticationFilter;
+    // ⚠️ NO inyectamos JwtAuthenticationFilter porque no lo usamos
 
-    /**
-     * Configuración del filtro de seguridad
-     */
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
@@ -49,52 +38,12 @@ public class SecurityConfig {
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // Endpoints públicos (sin autenticación)
-                        .requestMatchers("/api/auth/register", "/api/auth/login").permitAll()
-
-                        // LECTURA pública (GET) - cualquiera puede ver
-                        .requestMatchers(HttpMethod.GET, "/api/materias/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/temas/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/subtemas/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/contenidos/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/preguntas/**").permitAll()
-
-                        // CREACIÓN de contenido - SOLO profesores/admin (manual)
-                        .requestMatchers(HttpMethod.POST, "/api/materias/**").hasAnyRole("ADMINISTRADOR", "PROFESOR")
-                        .requestMatchers(HttpMethod.PUT, "/api/materias/**").hasAnyRole("ADMINISTRADOR", "PROFESOR")
-                        .requestMatchers(HttpMethod.DELETE, "/api/materias/**").hasAnyRole("ADMINISTRADOR", "PROFESOR")
-
-                        .requestMatchers(HttpMethod.POST, "/api/temas/**").hasAnyRole("ADMINISTRADOR", "PROFESOR")
-                        .requestMatchers(HttpMethod.PUT, "/api/temas/**").hasAnyRole("ADMINISTRADOR", "PROFESOR")
-                        .requestMatchers(HttpMethod.DELETE, "/api/temas/**").hasAnyRole("ADMINISTRADOR", "PROFESOR")
-
-                        .requestMatchers(HttpMethod.POST, "/api/subtemas/**").hasAnyRole("ADMINISTRADOR", "PROFESOR")
-                        .requestMatchers(HttpMethod.PUT, "/api/subtemas/**").hasAnyRole("ADMINISTRADOR", "PROFESOR")
-                        .requestMatchers(HttpMethod.DELETE, "/api/subtemas/**").hasAnyRole("ADMINISTRADOR", "PROFESOR")
-
-                        .requestMatchers(HttpMethod.POST, "/api/contenidos/**").hasAnyRole("ADMINISTRADOR", "PROFESOR")
-                        .requestMatchers(HttpMethod.PUT, "/api/contenidos/**").hasAnyRole("ADMINISTRADOR", "PROFESOR")
-                        .requestMatchers(HttpMethod.DELETE, "/api/contenidos/**").hasAnyRole("ADMINISTRADOR", "PROFESOR")
-
-                        // ⭐ IA para generar preguntas - CUALQUIER usuario autenticado
-                        // ✅ AHORA (público temporalmente):
-                        .requestMatchers("/api/ia/**").permitAll()
-
-                        // Otros endpoints protegidos
-                        .requestMatchers("/api/usuarios/**").hasAnyRole("ADMINISTRADOR", "PROFESOR")
-                        .requestMatchers("/api/retroalimentaciones/**").authenticated()
-
-                        // Cualquier otra petición requiere autenticación
-                        .anyRequest().authenticated()
+                        .anyRequest().permitAll()  // ⭐ TODO PÚBLICO PARA DESARROLLO
                 );
-
-        http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
-    /**
-     * Proveedor de autenticación con CustomUserDetailsService
-     */
+
     @Bean
     public DaoAuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
@@ -103,17 +52,11 @@ public class SecurityConfig {
         return authProvider;
     }
 
-    /**
-     * Authentication Manager para procesar autenticaciones
-     */
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration authConfig) throws Exception {
         return authConfig.getAuthenticationManager();
     }
 
-    /**
-     * Encoder de contraseñas con BCrypt
-     */
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();

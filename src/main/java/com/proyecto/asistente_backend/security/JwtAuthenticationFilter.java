@@ -16,9 +16,6 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 
-/**
- * Filtro que intercepta cada petición HTTP para validar el token JWT
- */
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
@@ -49,27 +46,52 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         );
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
-                // Establecer la autenticación en el contexto de seguridad
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             }
         } catch (Exception ex) {
-            logger.error("No se pudo establecer la autenticación del usuario en el contexto de seguridad", ex);
+            logger.error("No se pudo establecer la autenticación del usuario", ex);
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    private String getJwtFromRequest(HttpServletRequest request) {
+        String bearerToken = request.getHeader("Authorization");
+        if (StringUtils.hasText(bearerToken) && bearerToken.startsWith("Bearer ")) {
+            return bearerToken.substring(7);
+        }
+        return null;
+    }
+
+    /**
+     * Verifica si el endpoint es público y no requiere autenticación
+     */
+    private boolean isPublicEndpoint(String path) {
+        return path.startsWith("/api/auth/") ||
+                path.startsWith("/api/ia/") ||
+                path.startsWith("/api/materias") && path.contains("GET") ||
+                path.startsWith("/api/temas") && path.contains("GET") ||
+                path.startsWith("/api/subtemas") && path.contains("GET") ||
+                path.startsWith("/api/contenidos") && path.contains("GET") ||
+                path.startsWith("/api/ejercicios") && path.contains("GET") ||
+                path.startsWith("/api/preguntas") && path.contains("GET") ||
+                path.startsWith("/api/respuestas") && path.contains("GET");
     }
 
     /**
      * Extrae el token JWT del header Authorization
      * Formato esperado: "Bearer <token>"
      */
-    private String getJwtFromRequest(HttpServletRequest request) {
-        String bearerToken = request.getHeader("Authorization");
-        if (StringUtils.hasText(bearerToken) && bearerToken.startsWith("Bearer ")) {
-            return bearerToken.substring(7); // Remover "Bearer " del inicio
-        }
-        return null;
+
+    // ⭐ ESTE MÉTODO EXCLUYE RUTAS DEL FILTRO
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
+        String path = request.getRequestURI();
+
+        // NO filtrar estos endpoints (son públicos)
+        return path.startsWith("/api/auth/") ||
+                path.startsWith("/api/ia/");
     }
+
+
 }
-
-
