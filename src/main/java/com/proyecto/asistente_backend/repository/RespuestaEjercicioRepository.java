@@ -9,7 +9,7 @@ import java.util.List;
 
 @Repository
 public interface RespuestaEjercicioRepository extends JpaRepository<RespuestaEjercicio, Long> {
-
+    List<RespuestaEjercicio> findByUsuarioId(Long usuarioId);
     // Obtener respuestas de un usuario
     List<RespuestaEjercicio> findByUsuarioIdOrderByFechaRespuestaDesc(Long usuarioId);
 
@@ -37,4 +37,11 @@ public interface RespuestaEjercicioRepository extends JpaRepository<RespuestaEje
             Long usuarioId,
             RespuestaEjercicio.EstadoEvaluacion estado
     );
+    @Query("SELECT COUNT(r) FROM RespuestaEjercicio r WHERE r.usuario.id = :usuarioId " +
+            "AND (r.estado = 'CORRECTO' OR r.estado = 'PARCIALMENTE_CORRECTO')")
+    Long countCorrectasByUsuarioId(@Param("usuarioId") Long usuarioId);
+
+    @Query("SELECT COALESCE(SUM(r.puntaje), 0) FROM RespuestaEjercicio r WHERE r.usuario.id = :usuarioId")
+    Integer sumPuntajeByUsuarioId(@Param("usuarioId") Long usuarioId);
+
 }
