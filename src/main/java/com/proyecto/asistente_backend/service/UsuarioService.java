@@ -51,12 +51,20 @@ public class UsuarioService {
         return usuarioRepository.save(usuario);
     }
 
-    // Eliminar usuario (desactivar)
+    // Desactivar usuario (soft delete)
     public void desactivarUsuario(Long id) {
         Usuario usuario = usuarioRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
         usuario.setActivo(false);
         usuarioRepository.save(usuario);
+    }
+
+    // ✅ AGREGAR ESTE MÉTODO: Eliminar usuario físicamente
+    public void eliminarUsuario(Long id) {
+        if (!usuarioRepository.existsById(id)) {
+            throw new RuntimeException("Usuario no encontrado");
+        }
+        usuarioRepository.deleteById(id);
     }
 
     // Obtener usuarios activos
